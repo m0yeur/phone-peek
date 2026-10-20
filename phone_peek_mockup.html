@@ -1,0 +1,1312 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-950">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PhonePeek - Interactive Phone Simulator & Dev Studio</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        ios: {
+                            bg: '#000000',
+                            card: '#1c1c1e',
+                            blue: '#0a84ff',
+                            green: '#30d158',
+                            red: '#ff453a',
+                            yellow: '#ffd60a',
+                            gray: '#8e8e93'
+                        }
+                    },
+                    keyframes: {
+                        shake: {
+                            '0%, 100%': { transform: 'translateX(0)' },
+                            '20%, 60%': { transform: 'translateX(-10px)' },
+                            '40%, 80%': { transform: 'translateX(10px)' },
+                        },
+                        ringPulse: {
+                            '0%, 100%': { transform: 'scale(1)', opacity: '1' },
+                            '50%': { transform: 'scale(1.15)', opacity: '0.8' }
+                        }
+                    },
+                    animation: {
+                        shake: 'shake 0.4s ease-in-out',
+                        ringPulse: 'ringPulse 1.2s infinite ease-in-out',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom Scrollbars */
+        ::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+        }
+        .glass {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+        .glass-dark {
+            background: rgba(18, 18, 22, 0.75);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .no-select {
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        .app-screen {
+            will-change: transform, opacity;
+        }
+    </style>
+</head>
+<body class="h-full w-full flex flex-col items-center justify-center font-sans overflow-hidden bg-slate-950 text-slate-100 no-select selection:bg-pink-500/30">
+
+    <!-- Top Web Bar / Desktop Controls -->
+    <header class="fixed top-0 left-0 w-full z-40 p-3 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 flex items-center justify-between px-4 text-xs sm:text-sm">
+        <div class="flex items-center space-x-2 font-bold tracking-wider text-pink-500">
+            <i data-lucide="eye" class="w-5 h-5"></i>
+            <span>PhonePeek <span class="text-[10px] px-2 py-0.5 rounded-full bg-pink-500/20 text-pink-400 border border-pink-500/30 font-semibold">STUDIO</span></span>
+        </div>
+        
+        <div class="flex items-center space-x-2 sm:space-x-3">
+            <!-- Peek Dev Editor Toggle Button -->
+            <button onclick="toggleDevEditor()" class="flex items-center space-x-1.5 bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 text-white font-semibold px-3 py-1.5 rounded-lg shadow-lg shadow-pink-500/20 transition active:scale-95">
+                <i data-lucide="sliders" class="w-4 h-4"></i>
+                <span class="hidden sm:inline">Peek Editor</span>
+            </button>
+            <button id="toggleFrameBtn" onclick="togglePhoneFrame()" class="flex items-center space-x-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg border border-slate-700 transition">
+                <i data-lucide="smartphone" class="w-4 h-4"></i>
+                <span class="hidden sm:inline">Frame</span>
+            </button>
+            <button onclick="resetPhoneState()" class="flex items-center space-x-1.5 bg-slate-800 hover:bg-slate-700 text-red-400 px-3 py-1.5 rounded-lg border border-slate-700 transition">
+                <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                <span class="hidden sm:inline">Reset</span>
+            </button>
+            <button onclick="toggleSound()" id="soundBtn" class="flex items-center space-x-1.5 bg-slate-800 hover:bg-slate-700 text-emerald-400 px-3 py-1.5 rounded-lg border border-slate-700 transition">
+                <i data-lucide="volume-2" class="w-4 h-4" id="soundIcon"></i>
+                <span class="hidden sm:inline" id="soundText">Sound ON</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- PEEK EDITOR / DEV STUDIO PANEL SIDEBAR -->
+    <aside id="devEditorPanel" class="fixed top-14 right-0 bottom-0 w-80 sm:w-96 bg-slate-900/95 backdrop-blur-2xl border-l border-slate-800 z-50 p-5 overflow-y-auto transform translate-x-full transition-transform duration-300 shadow-2xl flex flex-col justify-between text-xs text-slate-200">
+        <div class="space-y-5">
+            <!-- Header -->
+            <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+                <div class="flex items-center space-x-2 font-bold text-pink-400 text-sm">
+                    <i data-lucide="edit-3" class="w-4 h-4"></i>
+                    <span>Peek Content & Dev Controls</span>
+                </div>
+                <button onclick="toggleDevEditor()" class="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+
+            <!-- Profile & Lock Controls -->
+            <div class="space-y-3">
+                <h4 class="font-semibold text-slate-400 uppercase tracking-wider text-[10px]">Phone Info & Lock</h4>
+                <div>
+                    <label class="block text-slate-400 mb-1">Target Owner Name</label>
+                    <input type="text" id="devOwnerName" value="Alex Vance" onchange="updateOwnerName(this.value)" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white focus:border-pink-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-slate-400 mb-1">Passcode PIN (4 Digits)</label>
+                    <input type="text" id="devPasscode" value="1234" maxlength="4" onchange="updatePasskey(this.value)" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white font-mono focus:border-pink-500 focus:outline-none">
+                </div>
+            </div>
+
+            <!-- Real-Time Triggers -->
+            <div class="space-y-3 pt-2 border-t border-slate-800">
+                <h4 class="font-semibold text-slate-400 uppercase tracking-wider text-[10px]">Real-Time Peek Triggers</h4>
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="triggerFakeCall()" class="p-2.5 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 rounded-xl flex items-center justify-center space-x-1.5 transition font-semibold">
+                        <i data-lucide="phone-incoming" class="w-4 h-4"></i>
+                        <span>Trigger Call</span>
+                    </button>
+                    <button onclick="triggerFakeNotification()" class="p-2.5 bg-pink-600/20 hover:bg-pink-600/30 text-pink-400 border border-pink-500/30 rounded-xl flex items-center justify-center space-x-1.5 transition font-semibold">
+                        <i data-lucide="bell" class="w-4 h-4"></i>
+                        <span>Trigger Push</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Custom Message Injector -->
+            <div class="space-y-3 pt-2 border-t border-slate-800">
+                <h4 class="font-semibold text-slate-400 uppercase tracking-wider text-[10px]">Inject Chat Message</h4>
+                <div>
+                    <label class="block text-slate-400 mb-1">Sender Name</label>
+                    <input type="text" id="devChatSender" value="Secret Contact" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white focus:border-pink-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-slate-400 mb-1">Message Text</label>
+                    <textarea id="devChatText" rows="2" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white focus:border-pink-500 focus:outline-none resize-none">Don't forget our meeting tonight at 11 PM...</textarea>
+                </div>
+                <button onclick="injectCustomChatMessage()" class="w-full py-2 bg-slate-800 hover:bg-slate-700 text-pink-400 border border-slate-700 rounded-xl font-semibold transition">
+                    + Add Message Thread
+                </button>
+            </div>
+
+            <!-- Custom Note Injector -->
+            <div class="space-y-3 pt-2 border-t border-slate-800">
+                <h4 class="font-semibold text-slate-400 uppercase tracking-wider text-[10px]">Inject Secret Note</h4>
+                <div>
+                    <label class="block text-slate-400 mb-1">Note Title</label>
+                    <input type="text" id="devNoteTitle" value="Hidden Safe Code" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white focus:border-pink-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-slate-400 mb-1">Note Content</label>
+                    <textarea id="devNoteBody" rows="2" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white focus:border-pink-500 focus:outline-none resize-none">Safe PIN: 9942 - Do not lose this!</textarea>
+                </div>
+                <button onclick="injectCustomNote()" class="w-full py-2 bg-slate-800 hover:bg-slate-700 text-pink-400 border border-slate-700 rounded-xl font-semibold transition">
+                    + Add Secret Note
+                </button>
+            </div>
+        </div>
+
+        <div class="pt-4 border-t border-slate-800 text-[11px] text-slate-500 text-center">
+            PhonePeek Mockup Studio • 100% Client-Side Safe
+        </div>
+    </aside>
+
+    <!-- Main Workspace Container -->
+    <main class="w-full h-full pt-14 flex items-center justify-center p-2 sm:p-6 overflow-hidden">
+        
+        <!-- Outer Device Frame -->
+        <div id="phoneDevice" class="relative transition-all duration-300 ease-out flex flex-col justify-between w-full max-w-[410px] h-[840px] max-h-[92vh] bg-black rounded-[50px] shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9)] border-[12px] border-slate-800 ring-1 ring-slate-700/50 overflow-hidden">
+            
+            <!-- Dynamic Island / Notch -->
+            <div id="dynamicIsland" class="absolute top-2 left-1/2 -translate-x-1/2 w-28 h-6 bg-black rounded-full z-50 flex items-center justify-between px-2.5 transition-all duration-300 shadow-md">
+                <div class="w-2.5 h-2.5 rounded-full bg-slate-900 ring-1 ring-slate-800"></div>
+                <div id="islandStatusIcon" class="hidden text-[10px] text-emerald-400 font-medium">In Call 00:04</div>
+                <div class="w-2 h-2 rounded-full bg-blue-900/40 ring-1 ring-blue-500/20"></div>
+            </div>
+
+            <!-- Status Bar -->
+            <div class="relative z-40 flex justify-between items-center px-7 pt-3 pb-1 text-xs font-semibold text-white">
+                <span id="statusBarTime" class="text-xs tracking-tight">12:00</span>
+                <div class="flex items-center space-x-2 text-[11px]">
+                    <i data-lucide="signal" class="w-3.5 h-3.5"></i>
+                    <i data-lucide="wifi" class="w-3.5 h-3.5"></i>
+                    <div class="flex items-center space-x-0.5">
+                        <span class="text-[10px] font-mono mr-0.5" id="batteryText">88%</span>
+                        <div class="w-5 h-2.5 border border-white/80 rounded-sm p-0.5 flex items-center">
+                            <div class="h-full bg-white rounded-xs w-[88%]" id="batteryBar"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Phone Screen Screen -->
+            <div id="phoneScreen" class="relative w-full flex-1 overflow-hidden bg-cover bg-center transition-all duration-500" style="background-image: url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1000&auto=format&fit=crop');">
+                
+                <div id="wallpaperOverlay" class="absolute inset-0 bg-black/20 transition-opacity duration-300"></div>
+
+                <!-- ================= 1. LOCK SCREEN ================= -->
+                <div id="lockScreen" class="absolute inset-0 z-30 flex flex-col justify-between p-6 pt-8 text-white transition-all duration-500 transform translate-y-0">
+                    
+                    <div class="flex flex-col items-center mt-4">
+                        <i data-lucide="lock" class="w-4 h-4 mb-2 opacity-80" id="lockIcon"></i>
+                        <h1 id="lockClock" class="text-6xl font-extralight tracking-tight drop-shadow-md">12:45</h1>
+                        <p id="lockDate" class="text-sm font-medium mt-1 opacity-90 drop-shadow">Thursday, October 22</p>
+
+                        <!-- Notification Cards Preview List -->
+                        <div id="lockNotificationsList" class="w-full mt-6 space-y-2.5 max-h-64 overflow-y-auto pr-0.5">
+                            <!-- Notification 1 -->
+                            <div onclick="openPasscodePrompt('appMessages')" class="glass-dark p-3 rounded-2xl flex items-start space-x-3 cursor-pointer hover:bg-white/10 transition shadow-lg border border-white/10">
+                                <div class="w-9 h-9 rounded-xl bg-green-500 flex items-center justify-center text-white shrink-0 shadow">
+                                    <i data-lucide="message-square" class="w-5 h-5"></i>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-xs font-semibold text-slate-200">WhatsApp • Alex 🤫</span>
+                                        <span class="text-[10px] text-slate-400">2m ago</span>
+                                    </div>
+                                    <p class="text-xs text-slate-300 truncate mt-0.5 font-normal">Are you seriously still keeping that photo in your gallery??</p>
+                                </div>
+                            </div>
+
+                            <!-- Notification 2 -->
+                            <div onclick="openPasscodePrompt('appInsta')" class="glass-dark p-3 rounded-2xl flex items-start space-x-3 cursor-pointer hover:bg-white/10 transition shadow-lg border border-white/10">
+                                <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-yellow-500 via-pink-500 to-purple-600 flex items-center justify-center text-white shrink-0 shadow">
+                                    <i data-lucide="instagram" class="w-5 h-5"></i>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-xs font-semibold text-slate-200">Instagram</span>
+                                        <span class="text-[10px] text-slate-400">18m ago</span>
+                                    </div>
+                                    <p class="text-xs text-slate-300 truncate mt-0.5 font-normal">@chloe_vibe tagged you in a story: "Late night secrets..."</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bottom Lockscreen Actions -->
+                    <div class="flex flex-col items-center space-y-4 mb-2">
+                        <button onclick="openPasscodePrompt()" class="w-full py-3 rounded-2xl glass hover:bg-white/20 transition text-sm font-medium flex items-center justify-center space-x-2 shadow-lg active:scale-95">
+                            <i data-lucide="key-round" class="w-4 h-4"></i>
+                            <span>Tap to Unlock</span>
+                        </button>
+                        <div class="flex justify-between w-full px-4 text-slate-300 text-xs">
+                            <button onclick="quickTorch(this)" class="p-3 rounded-full glass hover:bg-white/20 transition"><i data-lucide="flashlight" class="w-5 h-5"></i></button>
+                            <span class="text-[11px] self-center opacity-70">Passkey Hint: <strong class="text-white font-bold" id="passkeyHintText">1234</strong></span>
+                            <button onclick="openPasscodePrompt('appPhotos')" class="p-3 rounded-full glass hover:bg-white/20 transition"><i data-lucide="camera" class="w-5 h-5"></i></button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Passcode Overlay Modal -->
+                <div id="passcodeOverlay" class="absolute inset-0 z-40 bg-black/85 backdrop-blur-2xl flex flex-col items-center justify-between p-8 pt-12 transition-all duration-300 opacity-0 pointer-events-none translate-y-4">
+                    <div class="text-center">
+                        <i data-lucide="lock-keyhole" class="w-8 h-8 mx-auto mb-2 text-white/80"></i>
+                        <h2 class="text-lg font-medium text-white">Enter Passcode</h2>
+                        <p class="text-xs text-slate-400 mt-1">Default PIN: <span class="text-pink-400 font-bold" id="pinDisplayHint">1234</span></p>
+                    </div>
+
+                    <!-- PIN Dots -->
+                    <div id="pinDots" class="flex space-x-4 my-4">
+                        <div class="w-3.5 h-3.5 rounded-full border border-white/60"></div>
+                        <div class="w-3.5 h-3.5 rounded-full border border-white/60"></div>
+                        <div class="w-3.5 h-3.5 rounded-full border border-white/60"></div>
+                        <div class="w-3.5 h-3.5 rounded-full border border-white/60"></div>
+                    </div>
+
+                    <!-- Numpad -->
+                    <div class="grid grid-cols-3 gap-4 w-full max-w-[260px]">
+                        <button onclick="pressPin('1')" class="w-16 h-16 rounded-full glass flex items-center justify-center text-2xl font-light text-white active:scale-90 transition">1</button>
+                        <button onclick="pressPin('2')" class="w-16 h-16 rounded-full glass flex items-center justify-center text-2xl font-light text-white active:scale-90 transition">2</button>
+                        <button onclick="pressPin('3')" class="w-16 h-16 rounded-full glass flex items-center justify-center text-2xl font-light text-white active:scale-90 transition">3</button>
+                        <button onclick="pressPin('4')" class="w-16 h-16 rounded-full glass flex items-center justify-center text-2xl font-light text-white active:scale-90 transition">4</button>
+                        <button onclick="pressPin('5')" class="w-16 h-16 rounded-full glass flex items-center justify-center text-2xl font-light text-white active:scale-90 transition">5</button>
+                        <button onclick="pressPin('6')" class="w-16 h-16 rounded-full glass flex items-center justify-center text-2xl font-light text-white active:scale-90 transition">6</button>
+                        <button onclick="pressPin('7')" class="w-16 h-16 rounded-full glass flex items-center justify-center text-2xl font-light text-white active:scale-90 transition">7</button>
+                        <button onclick="pressPin('8')" class="w-16 h-16 rounded-full glass flex items-center justify-center text-2xl font-light text-white active:scale-90 transition">8</button>
+                        <button onclick="pressPin('9')" class="w-16 h-16 rounded-full glass flex items-center justify-center text-2xl font-light text-white active:scale-90 transition">9</button>
+                        <button onclick="pressPin('skip')" class="col-start-1 w-16 h-16 rounded-full flex items-center justify-center text-xs font-semibold text-pink-400 hover:text-pink-300">SKIP</button>
+                        <button onclick="pressPin('0')" class="w-16 h-16 rounded-full glass flex items-center justify-center text-2xl font-light text-white active:scale-90 transition">0</button>
+                        <button onclick="deletePin()" class="w-16 h-16 rounded-full flex items-center justify-center text-white/80 active:scale-90 transition"><i data-lucide="delete" class="w-6 h-6"></i></button>
+                    </div>
+
+                    <button onclick="closePasscodePrompt()" class="text-xs text-slate-400 hover:text-white pb-2">Cancel</button>
+                </div>
+
+
+                <!-- ================= 2. HOMESCREEN ================= -->
+                <div id="homeScreen" class="absolute inset-0 z-20 flex flex-col justify-between p-5 pt-6 transition-all duration-500 opacity-0 pointer-events-none scale-95">
+                    
+                    <div class="space-y-4">
+                        <!-- Smart Widget Box -->
+                        <div class="glass-dark p-4 rounded-3xl flex justify-between items-center text-white border border-white/10 shadow-lg">
+                            <div>
+                                <div class="flex items-center space-x-1.5 text-xs text-slate-400">
+                                    <i data-lucide="user" class="w-3.5 h-3.5 text-pink-400"></i>
+                                    <span id="homeOwnerName">Alex Vance</span>
+                                </div>
+                                <h3 class="text-sm font-semibold mt-1" id="widgetGreeting">Good Evening ✨</h3>
+                                <p class="text-[11px] text-slate-300 mt-0.5" id="homeUnreadCountText">3 unread messages • 1 secret note</p>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-2xl font-bold">24°C</span>
+                                <p class="text-[10px] text-slate-400">Mostly Clear</p>
+                            </div>
+                        </div>
+
+                        <!-- Main Grid App Icons -->
+                        <div class="grid grid-cols-4 gap-y-6 gap-x-3 pt-2">
+                            
+                            <!-- App: Phone Calls -->
+                            <button onclick="openApp('appPhone')" class="flex flex-col items-center group active:scale-90 transition">
+                                <div class="relative w-14 h-14 rounded-2xl bg-gradient-to-tr from-green-600 to-emerald-400 flex items-center justify-center text-white shadow-lg shadow-green-500/20 group-hover:brightness-110">
+                                    <i data-lucide="phone" class="w-7 h-7"></i>
+                                    <span class="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center border-2 border-black">1</span>
+                                </div>
+                                <span class="text-[11px] font-medium text-white mt-1.5 drop-shadow">Phone</span>
+                            </button>
+
+                            <!-- App: Messages -->
+                            <button onclick="openApp('appMessages')" class="flex flex-col items-center group active:scale-90 transition">
+                                <div class="relative w-14 h-14 rounded-2xl bg-gradient-to-tr from-emerald-500 to-green-400 flex items-center justify-center text-white shadow-lg shadow-green-500/20 group-hover:brightness-110">
+                                    <i data-lucide="message-circle" class="w-7 h-7"></i>
+                                    <span id="msgBadgeCount" class="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center border-2 border-black">3</span>
+                                </div>
+                                <span class="text-[11px] font-medium text-white mt-1.5 drop-shadow">Chat</span>
+                            </button>
+
+                            <!-- App: Instagram -->
+                            <button onclick="openApp('appInsta')" class="flex flex-col items-center group active:scale-90 transition">
+                                <div class="relative w-14 h-14 rounded-2xl bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-pink-500/20 group-hover:brightness-110">
+                                    <i data-lucide="instagram" class="w-7 h-7"></i>
+                                    <span class="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center border-2 border-black">5</span>
+                                </div>
+                                <span class="text-[11px] font-medium text-white mt-1.5 drop-shadow">Insta</span>
+                            </button>
+
+                            <!-- App: Photos / Gallery -->
+                            <button onclick="openApp('appPhotos')" class="flex flex-col items-center group active:scale-90 transition">
+                                <div class="relative w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-400 via-indigo-500 to-purple-500 flex items-center justify-center text-white shadow-lg shadow-indigo-500/20 group-hover:brightness-110">
+                                    <i data-lucide="image" class="w-7 h-7"></i>
+                                </div>
+                                <span class="text-[11px] font-medium text-white mt-1.5 drop-shadow">Photos</span>
+                            </button>
+
+                            <!-- App: Notes -->
+                            <button onclick="openApp('appNotes')" class="flex flex-col items-center group active:scale-90 transition">
+                                <div class="relative w-14 h-14 rounded-2xl bg-gradient-to-tr from-amber-400 to-yellow-500 flex items-center justify-center text-slate-900 shadow-lg shadow-yellow-500/20 group-hover:brightness-110">
+                                    <i data-lucide="file-text" class="w-7 h-7"></i>
+                                    <span id="notesBadgeCount" class="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center border-2 border-black">2</span>
+                                </div>
+                                <span class="text-[11px] font-medium text-white mt-1.5 drop-shadow">Notes</span>
+                            </button>
+
+                            <!-- App: Settings -->
+                            <button onclick="openApp('appSettings')" class="flex flex-col items-center group active:scale-90 transition">
+                                <div class="relative w-14 h-14 rounded-2xl bg-gradient-to-tr from-slate-600 to-slate-800 flex items-center justify-center text-white shadow-lg group-hover:brightness-110">
+                                    <i data-lucide="settings" class="w-7 h-7"></i>
+                                </div>
+                                <span class="text-[11px] font-medium text-white mt-1.5 drop-shadow">Settings</span>
+                            </button>
+
+                            <!-- App: Browser / Safari -->
+                            <button onclick="openApp('appBrowser')" class="flex flex-col items-center group active:scale-90 transition">
+                                <div class="relative w-14 h-14 rounded-2xl bg-gradient-to-tr from-sky-400 to-blue-600 flex items-center justify-center text-white shadow-lg group-hover:brightness-110">
+                                    <i data-lucide="compass" class="w-7 h-7"></i>
+                                </div>
+                                <span class="text-[11px] font-medium text-white mt-1.5 drop-shadow">Browser</span>
+                            </button>
+
+                            <!-- App: Secrets / Vault -->
+                            <button onclick="openPasscodePrompt('appNotes')" class="flex flex-col items-center group active:scale-90 transition">
+                                <div class="relative w-14 h-14 rounded-2xl bg-slate-900/80 border border-pink-500/40 flex items-center justify-center text-pink-400 shadow-lg group-hover:brightness-110">
+                                    <i data-lucide="shield-alert" class="w-6 h-6"></i>
+                                </div>
+                                <span class="text-[11px] font-medium text-pink-300 mt-1.5 drop-shadow">Vault</span>
+                            </button>
+
+                        </div>
+                    </div>
+
+                    <!-- Dock at Bottom -->
+                    <div class="glass-dark p-3 rounded-3xl flex justify-around items-center border border-white/15 shadow-2xl mb-2">
+                        <button onclick="openApp('appPhone')" class="p-2 hover:scale-110 active:scale-95 transition"><div class="w-12 h-12 rounded-xl bg-green-500 flex items-center justify-center text-white"><i data-lucide="phone" class="w-6 h-6"></i></div></button>
+                        <button onclick="openApp('appBrowser')" class="p-2 hover:scale-110 active:scale-95 transition"><div class="w-12 h-12 rounded-xl bg-blue-500 flex items-center justify-center text-white"><i data-lucide="globe" class="w-6 h-6"></i></div></button>
+                        <button onclick="openApp('appMessages')" class="p-2 hover:scale-110 active:scale-95 transition"><div class="w-12 h-12 rounded-xl bg-emerald-600 flex items-center justify-center text-white"><i data-lucide="message-square" class="w-6 h-6"></i></div></button>
+                        <button onclick="openApp('appPhotos')" class="p-2 hover:scale-110 active:scale-95 transition"><div class="w-12 h-12 rounded-xl bg-purple-500 flex items-center justify-center text-white"><i data-lucide="aperture" class="w-6 h-6"></i></div></button>
+                    </div>
+                </div>
+
+                <!-- ================= 3. INTERACTIVE APPS CONTAINERS ================= -->
+
+                <!-- APP 0: CALL LOG / PHONE APP -->
+                <div id="appPhone" class="app-screen absolute inset-0 z-30 bg-slate-950 text-slate-100 flex flex-col transition-all duration-300 transform translate-y-full">
+                    <div class="p-4 pt-3 bg-slate-900 border-b border-slate-800 flex items-center justify-between">
+                        <button onclick="closeApp('appPhone')" class="text-pink-400 flex items-center text-sm font-medium"><i data-lucide="chevron-left" class="w-5 h-5"></i> Back</button>
+                        <h2 class="text-base font-bold text-white">Recents</h2>
+                        <span class="w-5"></span>
+                    </div>
+
+                    <div class="flex-1 overflow-y-auto divide-y divide-slate-800/60 text-xs">
+                        <!-- Missed Call Item -->
+                        <div class="p-3.5 flex items-center justify-between hover:bg-slate-900/50">
+                            <div>
+                                <h4 class="font-bold text-red-400 text-sm">Unknown Number</h4>
+                                <p class="text-[10px] text-slate-400 mt-0.5">Incoming • Missed (2)</p>
+                            </div>
+                            <span class="text-slate-500 text-[10px]">11:04 AM</span>
+                        </div>
+                        <!-- Call Item 2 -->
+                        <div class="p-3.5 flex items-center justify-between hover:bg-slate-900/50">
+                            <div>
+                                <h4 class="font-bold text-slate-200 text-sm">Mom ❤️</h4>
+                                <p class="text-[10px] text-slate-400 mt-0.5">Outgoing • 14 mins</p>
+                            </div>
+                            <span class="text-slate-500 text-[10px]">Yesterday</span>
+                        </div>
+                        <!-- Call Item 3 -->
+                        <div class="p-3.5 flex items-center justify-between hover:bg-slate-900/50">
+                            <div>
+                                <h4 class="font-bold text-slate-200 text-sm">Alex 🤫</h4>
+                                <p class="text-[10px] text-slate-400 mt-0.5">Incoming • 2 mins</p>
+                            </div>
+                            <span class="text-slate-500 text-[10px]">Oct 19</span>
+                        </div>
+                    </div>
+
+                    <div class="p-3 bg-slate-900 border-t border-slate-800 text-center">
+                        <button onclick="triggerFakeCall()" class="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-semibold flex items-center justify-center space-x-2">
+                            <i data-lucide="phone-call" class="w-4 h-4"></i>
+                            <span>Simulate Test Incoming Call</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- APP 1: MESSAGES / WHATSAPP MOCKUP -->
+                <div id="appMessages" class="app-screen absolute inset-0 z-30 bg-slate-950 text-slate-100 flex flex-col transition-all duration-300 transform translate-y-full">
+                    <div class="p-4 pt-3 bg-slate-900 border-b border-slate-800 flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <button onclick="closeApp('appMessages')" class="text-pink-400 flex items-center text-sm font-medium"><i data-lucide="chevron-left" class="w-5 h-5"></i> Back</button>
+                            <h2 class="text-base font-bold text-white">Messages</h2>
+                        </div>
+                        <i data-lucide="edit-3" onclick="toggleDevEditor()" class="w-5 h-5 text-pink-400 cursor-pointer" title="Add Message in Peek Editor"></i>
+                    </div>
+
+                    <div id="chatListView" class="flex-1 overflow-y-auto divide-y divide-slate-800/60">
+                        <!-- Dynamic Chats rendered by JS -->
+                    </div>
+
+                    <!-- Individual Chat Detail View -->
+                    <div id="chatDetailView" class="hidden absolute inset-0 z-40 bg-slate-950 flex flex-col">
+                        <div class="p-3 bg-slate-900 border-b border-slate-800 flex items-center space-x-3">
+                            <button onclick="closeChatDetail()" class="text-pink-400"><i data-lucide="chevron-left" class="w-6 h-6"></i></button>
+                            <img id="chatAvatar" src="" class="w-9 h-9 rounded-full object-cover" alt="">
+                            <div class="flex-1">
+                                <h3 id="chatName" class="text-sm font-bold text-white">Contact</h3>
+                                <p class="text-[10px] text-emerald-400">Online</p>
+                            </div>
+                            <i data-lucide="phone" onclick="triggerFakeCall()" class="w-5 h-5 text-slate-400 cursor-pointer mr-2"></i>
+                        </div>
+
+                        <div id="messagesThread" class="flex-1 p-4 overflow-y-auto space-y-3 bg-slate-900/30 text-xs">
+                        </div>
+
+                        <div class="p-3 bg-slate-900 border-t border-slate-800 flex items-center space-x-2">
+                            <input type="text" id="fakeMsgInput" placeholder="Type a response..." class="flex-1 bg-slate-800 border border-slate-700 rounded-full px-4 py-2 text-xs text-white focus:outline-none focus:border-pink-500">
+                            <button onclick="sendFakeMessage()" class="w-8 h-8 rounded-full bg-pink-500 text-white flex items-center justify-center shrink-0 hover:bg-pink-600 transition"><i data-lucide="send" class="w-4 h-4"></i></button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- APP 2: INSTAGRAM MOCKUP -->
+                <div id="appInsta" class="app-screen absolute inset-0 z-30 bg-black text-white flex flex-col transition-all duration-300 transform translate-y-full">
+                    <div class="px-4 py-3 border-b border-neutral-800 flex justify-between items-center bg-black">
+                        <span class="font-serif italic text-xl font-bold tracking-wider">Instagram</span>
+                        <div class="flex items-center space-x-4">
+                            <i data-lucide="heart" class="w-5 h-5 cursor-pointer hover:text-pink-500"></i>
+                            <i data-lucide="message-circle" class="w-5 h-5 cursor-pointer"></i>
+                        </div>
+                    </div>
+
+                    <div class="flex-1 overflow-y-auto space-y-4">
+                        <div class="flex space-x-3 p-3 overflow-x-auto border-b border-neutral-900 bg-neutral-950">
+                            <div onclick="viewStory('Maya', 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=600')" class="flex flex-col items-center space-y-1 shrink-0 cursor-pointer">
+                                <div class="w-14 h-14 rounded-full p-0.5 bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-600">
+                                    <img src="https://images.unsplash.com/photo-1517841905240-472988babdf9?w=100&auto=format&fit=crop" class="w-full h-full rounded-full object-cover border-2 border-black">
+                                </div>
+                                <span class="text-[10px] text-neutral-400">Story</span>
+                            </div>
+                            <div onclick="viewStory('Chloe', 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=600')" class="flex flex-col items-center space-y-1 shrink-0 cursor-pointer">
+                                <div class="w-14 h-14 rounded-full p-0.5 bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-600">
+                                    <img src="https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=100&auto=format&fit=crop" class="w-full h-full rounded-full object-cover border-2 border-black">
+                                </div>
+                                <span class="text-[10px] text-neutral-300">chloe_vibe</span>
+                            </div>
+                        </div>
+
+                        <!-- Post 1 -->
+                        <div class="border-b border-neutral-900 pb-4">
+                            <div class="flex items-center justify-between p-3">
+                                <div class="flex items-center space-x-2">
+                                    <img src="https://images.unsplash.com/photo-1517841905240-472988babdf9?w=100" class="w-8 h-8 rounded-full object-cover">
+                                    <span class="text-xs font-semibold" id="instaProfileName">alex.vance</span>
+                                </div>
+                                <i data-lucide="more-horizontal" class="w-4 h-4 text-neutral-400"></i>
+                            </div>
+                            <img src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=600&auto=format&fit=crop" class="w-full h-72 object-cover" alt="Post">
+                            <div class="p-3 space-y-2">
+                                <div class="flex justify-between items-center">
+                                    <div class="flex items-center space-x-3">
+                                        <i data-lucide="heart" onclick="toggleLike(this)" class="w-5 h-5 cursor-pointer hover:text-red-500 transition"></i>
+                                        <i data-lucide="message-circle" class="w-5 h-5 cursor-pointer"></i>
+                                        <i data-lucide="send" class="w-5 h-5 cursor-pointer"></i>
+                                    </div>
+                                    <i data-lucide="bookmark" class="w-5 h-5 cursor-pointer"></i>
+                                </div>
+                                <p class="text-xs font-semibold">1,248 likes</p>
+                                <p class="text-xs text-neutral-300"><span class="font-semibold text-white mr-1">alex.vance</span>Escape the ordinary... 🌊✨ #vacation #secrets</p>
+                                <p class="text-[10px] text-neutral-500 uppercase">2 hours ago</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Story Viewer Modal -->
+                    <div id="storyViewer" class="hidden absolute inset-0 z-50 bg-black flex flex-col justify-between p-4">
+                        <div class="flex justify-between items-center text-xs z-10">
+                            <span id="storyAuthor" class="font-bold">Story</span>
+                            <button onclick="closeStory()" class="text-white text-lg font-bold">✕</button>
+                        </div>
+                        <img id="storyImg" src="" class="absolute inset-0 w-full h-full object-cover my-auto">
+                        <div class="relative z-10 text-center pb-6">
+                            <p class="text-xs bg-black/50 p-2 rounded-lg backdrop-blur">Tap anywhere to close</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- APP 3: PHOTOS / GALLERY -->
+                <div id="appPhotos" class="app-screen absolute inset-0 z-30 bg-slate-950 text-white flex flex-col transition-all duration-300 transform translate-y-full">
+                    <div class="p-4 bg-slate-900 border-b border-slate-800 flex justify-between items-center">
+                        <div class="flex items-center space-x-2">
+                            <button onclick="closeApp('appPhotos')" class="text-pink-400 text-sm font-medium flex items-center"><i data-lucide="chevron-left" class="w-5 h-5"></i></button>
+                            <h2 class="text-base font-bold">Gallery</h2>
+                        </div>
+                        <span class="text-xs text-slate-400">12 Photos</span>
+                    </div>
+
+                    <div class="flex border-b border-slate-800 text-xs font-semibold text-slate-400">
+                        <button onclick="switchPhotoTab('all')" id="tabAllPhotos" class="flex-1 py-2.5 text-pink-400 border-b-2 border-pink-400">All Photos</button>
+                        <button onclick="switchPhotoTab('deleted')" id="tabDeletedPhotos" class="flex-1 py-2.5 hover:text-white">Recently Deleted 🔒</button>
+                    </div>
+
+                    <div id="photosGrid" class="flex-1 p-2 grid grid-cols-3 gap-1.5 overflow-y-auto">
+                    </div>
+
+                    <!-- Photo Modal Zoom View -->
+                    <div id="photoModal" class="hidden absolute inset-0 z-50 bg-black/95 flex flex-col justify-between p-4 transition-all">
+                        <div class="flex justify-between items-center">
+                            <button onclick="closePhotoModal()" class="text-pink-400 text-sm">Close</button>
+                            <span id="photoCaption" class="text-xs text-slate-400">Photo Details</span>
+                            <i data-lucide="trash-2" onclick="deletePhotoAlert()" class="w-4 h-4 text-red-400 cursor-pointer"></i>
+                        </div>
+                        <div class="flex-1 flex items-center justify-center p-2">
+                            <img id="modalImg" src="" class="max-h-[70vh] max-w-full rounded-lg object-contain shadow-2xl">
+                        </div>
+                        <div id="photoSecretNote" class="p-3 bg-slate-900/90 border border-slate-800 rounded-xl text-center text-xs text-pink-300 font-mono">
+                            Location Tag: Unknown • Metadata Encrypted
+                        </div>
+                    </div>
+                </div>
+
+                <!-- APP 4: NOTES APP -->
+                <div id="appNotes" class="app-screen absolute inset-0 z-30 bg-slate-900 text-slate-100 flex flex-col transition-all duration-300 transform translate-y-full">
+                    <div class="p-4 border-b border-slate-800 flex justify-between items-center">
+                        <button onclick="closeApp('appNotes')" class="text-pink-400 text-sm font-medium flex items-center"><i data-lucide="chevron-left" class="w-5 h-5"></i> Back</button>
+                        <h2 class="text-base font-bold">Notes</h2>
+                        <i data-lucide="plus" onclick="toggleDevEditor()" class="w-5 h-5 text-pink-400 cursor-pointer" title="Add Note in Peek Editor"></i>
+                    </div>
+
+                    <div id="notesListContainer" class="flex-1 overflow-y-auto p-3 space-y-2.5">
+                        <!-- Notes dynamic rendered -->
+                    </div>
+
+                    <!-- Note Display Overlay -->
+                    <div id="noteReader" class="hidden absolute inset-0 z-40 bg-slate-900 p-5 flex flex-col justify-between">
+                        <div>
+                            <div class="flex justify-between items-center mb-4">
+                                <button onclick="closeNoteReader()" class="text-pink-400 text-xs font-bold flex items-center"><i data-lucide="chevron-left" class="w-4 h-4 mr-1"></i> Back</button>
+                                <span class="text-[10px] text-slate-400">View Mode</span>
+                            </div>
+                            <h2 id="noteTitle" class="text-base font-bold mb-3 text-white">Note Title</h2>
+                            <textarea id="noteBody" class="w-full h-64 bg-transparent text-xs text-slate-300 leading-relaxed focus:outline-none resize-none" spellcheck="false"></textarea>
+                        </div>
+                        <button onclick="saveNoteChanges()" class="w-full py-2.5 bg-pink-600 text-white rounded-xl text-xs font-semibold">Save Note</button>
+                    </div>
+                </div>
+
+                <!-- APP 5: BROWSER MOCKUP -->
+                <div id="appBrowser" class="app-screen absolute inset-0 z-30 bg-slate-950 text-slate-100 flex flex-col transition-all duration-300 transform translate-y-full">
+                    <div class="p-3 bg-slate-900 border-b border-slate-800 flex items-center space-x-2">
+                        <button onclick="closeApp('appBrowser')" class="text-pink-400"><i data-lucide="x" class="w-5 h-5"></i></button>
+                        <div class="flex-1 bg-slate-800 rounded-full px-3 py-1.5 flex items-center space-x-2 text-xs text-slate-300 border border-slate-700">
+                            <i data-lucide="lock" class="w-3 h-3 text-emerald-400"></i>
+                            <span class="truncate">google.com/search?q=how+to+tell+if...</span>
+                        </div>
+                    </div>
+
+                    <div class="flex-1 p-4 overflow-y-auto space-y-4 text-xs">
+                        <div class="text-slate-400 text-[11px]">Recent Search History:</div>
+                        <div class="bg-slate-900 p-3 rounded-xl border border-slate-800 space-y-1">
+                            <h4 class="text-pink-400 font-semibold hover:underline cursor-pointer">How to know if someone is snooping on your phone?</h4>
+                            <p class="text-slate-400 text-[11px]">Signs someone accessed your messages, gallery, or notes without permission...</p>
+                        </div>
+                        <div class="bg-slate-900 p-3 rounded-xl border border-slate-800 space-y-1">
+                            <h4 class="text-pink-400 font-semibold hover:underline cursor-pointer">Top secret travel destinations for two</h4>
+                            <p class="text-slate-400 text-[11px]">Top quiet beaches and luxury cabins for romantic weekends away from city...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- APP 6: SETTINGS APP -->
+                <div id="appSettings" class="app-screen absolute inset-0 z-30 bg-slate-950 text-white flex flex-col transition-all duration-300 transform translate-y-full">
+                    <div class="p-4 bg-slate-900 border-b border-slate-800 flex justify-between items-center">
+                        <button onclick="closeApp('appSettings')" class="text-pink-400 text-sm font-medium flex items-center"><i data-lucide="chevron-left" class="w-5 h-5"></i> Back</button>
+                        <h2 class="text-base font-bold">Settings</h2>
+                        <span class="w-5"></span>
+                    </div>
+
+                    <div class="flex-1 overflow-y-auto p-4 space-y-4 text-xs">
+                        <div class="bg-slate-900 p-3.5 rounded-2xl flex items-center space-x-3 border border-slate-800">
+                            <img id="settingsProfilePic" src="https://images.unsplash.com/photo-1517841905240-472988babdf9?w=100" class="w-12 h-12 rounded-full object-cover">
+                            <div>
+                                <h3 id="settingsProfileName" class="font-bold text-sm text-white">Alex Vance</h3>
+                                <p class="text-[10px] text-slate-400">Apple ID, iCloud, Media & Purchases</p>
+                            </div>
+                        </div>
+
+                        <div class="space-y-2">
+                            <span class="text-[10px] text-slate-500 uppercase font-bold tracking-wider px-1">Customization</span>
+                            
+                            <div class="bg-slate-900 rounded-xl p-3 border border-slate-800 space-y-2">
+                                <label class="text-slate-300 font-medium block">Phone Wallpaper</label>
+                                <div class="grid grid-cols-3 gap-2 pt-1">
+                                    <button onclick="changeWallpaper('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1000')" class="h-14 rounded-lg bg-cover bg-center border border-pink-500" style="background-image: url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=200')"></button>
+                                    <button onclick="changeWallpaper('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=1000')" class="h-14 rounded-lg bg-cover bg-center border border-slate-700" style="background-image: url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=200')"></button>
+                                    <button onclick="changeWallpaper('https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=1000')" class="h-14 rounded-lg bg-cover bg-center border border-slate-700" style="background-image: url('https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=200')"></button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="pt-2">
+                            <button onclick="resetPhoneState()" class="w-full py-3 bg-red-500/20 hover:bg-red-500/30 text-red-400 font-semibold rounded-xl border border-red-500/30 transition">
+                                Lock & Reset Phone
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ================= 4. INCOMING CALL REAL-TIME MODAL ================= -->
+                <div id="incomingCallModal" class="hidden absolute inset-0 z-50 bg-black/95 flex flex-col justify-between p-8 text-white transition-all">
+                    <div class="text-center pt-8 space-y-2">
+                        <div class="w-20 h-20 mx-auto rounded-full bg-slate-800 p-1 border-2 border-emerald-500 animate-ringPulse">
+                            <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200" class="w-full h-full rounded-full object-cover">
+                        </div>
+                        <h3 class="text-xl font-bold text-white mt-4" id="callCallerName">Alex 🤫</h3>
+                        <p class="text-xs text-emerald-400 animate-pulse">Incoming Phone Call...</p>
+                    </div>
+
+                    <div class="flex justify-around items-center pb-8 w-full">
+                        <!-- Decline Button -->
+                        <button onclick="declineCall()" class="w-16 h-16 rounded-full bg-red-600 flex items-center justify-center text-white shadow-lg active:scale-95 transition">
+                            <i data-lucide="phone-off" class="w-7 h-7"></i>
+                        </button>
+                        <!-- Accept Button -->
+                        <button onclick="acceptCall()" class="w-16 h-16 rounded-full bg-green-500 flex items-center justify-center text-white shadow-lg active:scale-95 transition">
+                            <i data-lucide="phone" class="w-7 h-7"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ================= 5. BOTTOM NAVIGATION HOME BAR ================= -->
+                <div class="absolute bottom-1 left-1/2 -translate-x-1/2 z-50 w-32 h-1 bg-white/60 hover:bg-white rounded-full cursor-pointer transition" onclick="goHome()" title="Home Bar Gesture"></div>
+
+            </div>
+        </div>
+    </main>
+
+    <!-- Global Toast Alert -->
+    <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 glass-dark text-white px-4 py-2 rounded-xl text-xs font-medium shadow-2xl border border-white/20 transition-all duration-300 opacity-0 pointer-events-none translate-y-4">
+        Toast message
+    </div>
+
+    <script>
+        // State variables
+        let soundEnabled = true;
+        let currentPin = "1234";
+        let enteredPin = "";
+        let pendingAppTarget = null;
+        let isLocked = true;
+        let isFrameView = true;
+        let isDevEditorOpen = false;
+        let callRingtoneInterval = null;
+
+        // Dynamic State Data
+        let chatsData = {
+            alex: {
+                name: "Alex 🤫",
+                avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop",
+                messages: [
+                    { sender: "them", text: "Hey! Did you get home safe last night?", time: "12:30 PM" },
+                    { sender: "me", text: "Yeah, got in around 1 AM. Why?", time: "12:32 PM" },
+                    { sender: "them", text: "Are you seriously still keeping that photo in your gallery??", time: "12:43 PM" },
+                    { sender: "them", text: "If anyone sees it, we are dead! 🙈", time: "12:44 PM" }
+                ]
+            },
+            mom: {
+                name: "Mom ❤️",
+                avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&auto=format&fit=crop",
+                messages: [
+                    { sender: "them", text: "Hi sweetie, calling you later!", time: "Yesterday" },
+                    { sender: "them", text: "Don't forget Sunday dinner!", time: "Yesterday" }
+                ]
+            }
+        };
+
+        let notesData = [
+            { id: 1, title: "Passcodes & Passwords", body: "Bank PIN: 9821\nHouse Alarm: 4012#\nVault Key: 1234\n\n*DO NOT SHARE WITH ALEX*", date: "Today" },
+            { id: 2, title: "Late Night Secret", body: "I feel like someone is watching my phone... If you are peeking right now, check deleted photos!", date: "Oct 20" }
+        ];
+
+        const photosData = [
+            { url: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=500", note: "Sunset Beach - Summer Vacation 🌴" },
+            { url: "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=500", note: "Selfie before party ✨" },
+            { url: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=500", note: "Coffee with Chloe ☕" },
+            { url: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=500", note: "Secret Hideaway Beach 🤫" }
+        ];
+
+        const deletedPhotosData = [
+            { url: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=500", note: "DELETED: Secret party photo with Alex!" },
+            { url: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500", note: "DELETED: Screenshot of leaked chat 🤐" }
+        ];
+
+        // Web Audio Synthesizer Effects
+        function playSound(type) {
+            if (!soundEnabled) return;
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+
+                if (type === 'click') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(600, ctx.currentTime);
+                    gain.gain.setValueAtTime(0.05, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.05);
+                    osc.start();
+                    osc.stop(ctx.currentTime + 0.05);
+                } else if (type === 'unlock') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(440, ctx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15);
+                    gain.gain.setValueAtTime(0.08, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+                    osc.start();
+                    osc.stop(ctx.currentTime + 0.15);
+                } else if (type === 'error') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(220, ctx.currentTime);
+                    gain.gain.setValueAtTime(0.08, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
+                    osc.start();
+                    osc.stop(ctx.currentTime + 0.2);
+                } else if (type === 'ring') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(850, ctx.currentTime);
+                    gain.gain.setValueAtTime(0.1, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+                    osc.start();
+                    osc.stop(ctx.currentTime + 0.4);
+                }
+            } catch (e) {}
+        }
+
+        // Initialize Application
+        window.onload = function() {
+            lucide.createIcons();
+            updateClock();
+            setInterval(updateClock, 1000);
+            renderChatsList();
+            renderNotesList();
+            renderPhotos('all');
+        };
+
+        function updateClock() {
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const timeStr = `${hours}:${minutes}`;
+            
+            document.getElementById('statusBarTime').innerText = timeStr;
+            document.getElementById('lockClock').innerText = timeStr;
+
+            const options = { weekday: 'long', month: 'long', day: 'numeric' };
+            document.getElementById('lockDate').innerText = now.toLocaleDateString('en-US', options);
+        }
+
+        // Lockscreen & Keypad
+        function openPasscodePrompt(targetApp = null) {
+            playSound('click');
+            pendingAppTarget = targetApp;
+            enteredPin = "";
+            updatePinDots();
+            const overlay = document.getElementById('passcodeOverlay');
+            overlay.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-4');
+        }
+
+        function closePasscodePrompt() {
+            playSound('click');
+            const overlay = document.getElementById('passcodeOverlay');
+            overlay.classList.add('opacity-0', 'pointer-events-none', 'translate-y-4');
+        }
+
+        function pressPin(num) {
+            playSound('click');
+            if (num === 'skip') {
+                unlockPhone();
+                return;
+            }
+
+            if (enteredPin.length < 4) {
+                enteredPin += num;
+                updatePinDots();
+            }
+
+            if (enteredPin.length === 4) {
+                setTimeout(() => {
+                    if (enteredPin === currentPin) {
+                        unlockPhone();
+                    } else {
+                        playSound('error');
+                        showToast("Incorrect Passcode! Try " + currentPin);
+                        const pinDots = document.getElementById('pinDots');
+                        pinDots.classList.add('animate-shake');
+                        setTimeout(() => {
+                            pinDots.classList.remove('animate-shake');
+                            enteredPin = "";
+                            updatePinDots();
+                        }, 400);
+                    }
+                }, 100);
+            }
+        }
+
+        function deletePin() {
+            playSound('click');
+            if (enteredPin.length > 0) {
+                enteredPin = enteredPin.slice(0, -1);
+                updatePinDots();
+            }
+        }
+
+        function updatePinDots() {
+            const dotsContainer = document.getElementById('pinDots');
+            const dots = dotsContainer.children;
+            for (let i = 0; i < 4; i++) {
+                if (i < enteredPin.length) {
+                    dots[i].className = "w-3.5 h-3.5 rounded-full bg-white border border-white";
+                } else {
+                    dots[i].className = "w-3.5 h-3.5 rounded-full border border-white/60";
+                }
+            }
+        }
+
+        function unlockPhone() {
+            playSound('unlock');
+            isLocked = false;
+            closePasscodePrompt();
+
+            const lockScreen = document.getElementById('lockScreen');
+            const homeScreen = document.getElementById('homeScreen');
+
+            lockScreen.classList.add('-translate-y-full', 'opacity-0');
+            homeScreen.classList.remove('opacity-0', 'pointer-events-none', 'scale-95');
+
+            if (pendingAppTarget) {
+                openApp(pendingAppTarget);
+                pendingAppTarget = null;
+            }
+        }
+
+        function resetPhoneState() {
+            playSound('click');
+            isLocked = true;
+            closeAllApps();
+            const lockScreen = document.getElementById('lockScreen');
+            const homeScreen = document.getElementById('homeScreen');
+
+            lockScreen.classList.remove('-translate-y-full', 'opacity-0');
+            homeScreen.classList.add('opacity-0', 'pointer-events-none', 'scale-95');
+            showToast("Phone Locked & Reset");
+        }
+
+        // Apps Navigation
+        function openApp(appId) {
+            playSound('click');
+            const appElement = document.getElementById(appId);
+            if (appElement) {
+                appElement.classList.remove('translate-y-full');
+            }
+        }
+
+        function closeApp(appId) {
+            playSound('click');
+            const appElement = document.getElementById(appId);
+            if (appElement) {
+                appElement.classList.add('translate-y-full');
+            }
+        }
+
+        function closeAllApps() {
+            const apps = document.querySelectorAll('.app-screen');
+            apps.forEach(app => app.classList.add('translate-y-full'));
+        }
+
+        function goHome() {
+            playSound('click');
+            if (!isLocked) {
+                closeAllApps();
+            }
+        }
+
+        // Peek Dev Editor Sidebar Functions
+        function toggleDevEditor() {
+            playSound('click');
+            isDevEditorOpen = !isDevEditorOpen;
+            const panel = document.getElementById('devEditorPanel');
+            if (isDevEditorOpen) {
+                panel.classList.remove('translate-x-full');
+            } else {
+                panel.classList.add('translate-x-full');
+            }
+        }
+
+        function updateOwnerName(val) {
+            if (!val) return;
+            document.getElementById('homeOwnerName').innerText = val;
+            document.getElementById('settingsProfileName').innerText = val;
+            document.getElementById('instaProfileName').innerText = val.toLowerCase().replace(/\s+/g, '.');
+            showToast("Owner name updated!");
+        }
+
+        function updatePasskey(val) {
+            if (val.length === 4) {
+                currentPin = val;
+                document.getElementById('passkeyHintText').innerText = val;
+                document.getElementById('pinDisplayHint').innerText = val;
+                showToast("PIN updated to " + val);
+            }
+        }
+
+        // Dynamic Triggers
+        function triggerFakeCall() {
+            playSound('ring');
+            const callModal = document.getElementById('incomingCallModal');
+            callModal.classList.remove('hidden');
+
+            callRingtoneInterval = setInterval(() => {
+                playSound('ring');
+            }, 1000);
+        }
+
+        function declineCall() {
+            playSound('click');
+            if (callRingtoneInterval) clearInterval(callRingtoneInterval);
+            document.getElementById('incomingCallModal').classList.add('hidden');
+            showToast("Call Declined");
+        }
+
+        function acceptCall() {
+            playSound('unlock');
+            if (callRingtoneInterval) clearInterval(callRingtoneInterval);
+            document.getElementById('incomingCallModal').classList.add('hidden');
+            
+            const islandStatus = document.getElementById('islandStatusIcon');
+            islandStatus.classList.remove('hidden');
+            showToast("Call Active in Dynamic Island");
+
+            setTimeout(() => {
+                islandStatus.classList.add('hidden');
+            }, 6000);
+        }
+
+        function triggerFakeNotification() {
+            playSound('click');
+            const list = document.getElementById('lockNotificationsList');
+            const newCard = document.createElement('div');
+            newCard.onclick = () => openPasscodePrompt('appMessages');
+            newCard.className = "glass-dark p-3 rounded-2xl flex items-start space-x-3 cursor-pointer hover:bg-white/10 transition shadow-lg border border-white/10 animate-bounce";
+            newCard.innerHTML = `
+                <div class="w-9 h-9 rounded-xl bg-pink-500 flex items-center justify-center text-white shrink-0 shadow">
+                    <i data-lucide="bell" class="w-5 h-5"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs font-semibold text-slate-200">System Alert</span>
+                        <span class="text-[10px] text-slate-400">Just now</span>
+                    </div>
+                    <p class="text-xs text-slate-300 truncate mt-0.5 font-normal">Someone is actively peeking at your screen right now!</p>
+                </div>
+            `;
+            list.prepend(newCard);
+            lucide.createIcons();
+            showToast("Pushed Notification to Lockscreen");
+        }
+
+        function injectCustomChatMessage() {
+            const sender = document.getElementById('devChatSender').value || "Secret Contact";
+            const text = document.getElementById('devChatText').value || "Hey there...";
+            const key = 'custom_' + Date.now();
+
+            chatsData[key] = {
+                name: sender,
+                avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop",
+                messages: [{ sender: "them", text: text, time: "Just now" }]
+            };
+
+            renderChatsList();
+            showToast("Custom message thread added!");
+        }
+
+        function injectCustomNote() {
+            const title = document.getElementById('devNoteTitle').value || "New Note";
+            const body = document.getElementById('devNoteBody').value || "Note details...";
+
+            notesData.unshift({
+                id: Date.now(),
+                title: title,
+                body: body,
+                date: "Just now"
+            });
+
+            renderNotesList();
+            showToast("New secret note added!");
+        }
+
+        // Messages App Rendering
+        function renderChatsList() {
+            const container = document.getElementById('chatListView');
+            container.innerHTML = '';
+
+            Object.keys(chatsData).forEach(key => {
+                const chat = chatsData[key];
+                const lastMsg = chat.messages[chat.messages.length - 1];
+
+                const chatItem = document.createElement('div');
+                chatItem.onclick = () => openChat(key);
+                chatItem.className = "p-4 flex items-center space-x-3 hover:bg-slate-900/50 cursor-pointer transition";
+                chatItem.innerHTML = `
+                    <img src="${chat.avatar}" class="w-12 h-12 rounded-full object-cover border border-slate-700">
+                    <div class="flex-1 min-w-0">
+                        <div class="flex justify-between items-baseline">
+                            <h3 class="text-sm font-semibold text-slate-100">${chat.name}</h3>
+                            <span class="text-[10px] text-slate-400">${lastMsg ? lastMsg.time : ''}</span>
+                        </div>
+                        <p class="text-xs text-slate-400 truncate mt-0.5">${lastMsg ? lastMsg.text : ''}</p>
+                    </div>
+                `;
+                container.appendChild(chatItem);
+            });
+        }
+
+        function openChat(contactKey) {
+            playSound('click');
+            const chat = chatsData[contactKey];
+            if (!chat) return;
+
+            document.getElementById('chatName').innerText = chat.name;
+            document.getElementById('chatAvatar').src = chat.avatar;
+
+            const thread = document.getElementById('messagesThread');
+            thread.innerHTML = '';
+
+            chat.messages.forEach(msg => {
+                const msgBubble = document.createElement('div');
+                if (msg.sender === 'me') {
+                    msgBubble.className = "ml-auto max-w-[80%] bg-pink-600 text-white p-2.5 rounded-2xl rounded-tr-xs shadow";
+                } else {
+                    msgBubble.className = "mr-auto max-w-[80%] bg-slate-800 text-slate-100 p-2.5 rounded-2xl rounded-tl-xs shadow border border-slate-700/50";
+                }
+                msgBubble.innerHTML = `<p>${msg.text}</p><span class="text-[9px] opacity-60 block text-right mt-1">${msg.time}</span>`;
+                thread.appendChild(msgBubble);
+            });
+
+            document.getElementById('chatDetailView').classList.remove('hidden');
+            thread.scrollTop = thread.scrollHeight;
+        }
+
+        function closeChatDetail() {
+            playSound('click');
+            document.getElementById('chatDetailView').classList.add('hidden');
+        }
+
+        function sendFakeMessage() {
+            const input = document.getElementById('fakeMsgInput');
+            const text = input.value.trim();
+            if (!text) return;
+
+            playSound('click');
+            const thread = document.getElementById('messagesThread');
+            const msgBubble = document.createElement('div');
+            msgBubble.className = "ml-auto max-w-[80%] bg-pink-600 text-white p-2.5 rounded-2xl rounded-tr-xs shadow";
+            msgBubble.innerHTML = `<p>${text}</p><span class="text-[9px] opacity-60 block text-right mt-1">Just now</span>`;
+            thread.appendChild(msgBubble);
+
+            input.value = '';
+            thread.scrollTop = thread.scrollHeight;
+
+            setTimeout(() => {
+                playSound('click');
+                const replyBubble = document.createElement('div');
+                replyBubble.className = "mr-auto max-w-[80%] bg-slate-800 text-slate-100 p-2.5 rounded-2xl rounded-tl-xs shadow border border-slate-700/50";
+                replyBubble.innerHTML = `<p>Who is typing on my phone right now?? 😳</p><span class="text-[9px] opacity-60 block text-right mt-1">Just now</span>`;
+                thread.appendChild(replyBubble);
+                thread.scrollTop = thread.scrollHeight;
+            }, 1200);
+        }
+
+        // Notes Rendering
+        function renderNotesList() {
+            const container = document.getElementById('notesListContainer');
+            container.innerHTML = '';
+
+            notesData.forEach(note => {
+                const card = document.createElement('div');
+                card.onclick = () => viewNote(note.title, note.body);
+                card.className = "p-3.5 bg-slate-800 rounded-2xl shadow-sm border border-slate-700/60 cursor-pointer hover:scale-[0.99] transition";
+                card.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-xs font-bold text-white flex items-center space-x-1">
+                            <i data-lucide="file-text" class="w-3.5 h-3.5 mr-1 text-pink-400"></i> ${note.title}
+                        </h3>
+                        <span class="text-[10px] text-slate-400">${note.date}</span>
+                    </div>
+                    <p class="text-[11px] text-slate-400 line-clamp-2 mt-1">${note.body}</p>
+                `;
+                container.appendChild(card);
+            });
+            lucide.createIcons();
+        }
+
+        function viewNote(title, body) {
+            playSound('click');
+            document.getElementById('noteTitle').innerText = title;
+            document.getElementById('noteBody').value = body;
+            document.getElementById('noteReader').classList.remove('hidden');
+        }
+
+        function closeNoteReader() {
+            playSound('click');
+            document.getElementById('noteReader').classList.add('hidden');
+        }
+
+        function saveNoteChanges() {
+            playSound('click');
+            showToast("Note saved!");
+            closeNoteReader();
+        }
+
+        // Photo Gallery
+        function renderPhotos(type) {
+            const grid = document.getElementById('photosGrid');
+            grid.innerHTML = '';
+            const list = type === 'deleted' ? deletedPhotosData : photosData;
+
+            list.forEach(item => {
+                const imgContainer = document.createElement('div');
+                imgContainer.className = "aspect-square rounded-xl overflow-hidden cursor-pointer bg-slate-800 relative group";
+                imgContainer.onclick = () => openPhotoModal(item.url, item.note);
+                imgContainer.innerHTML = `<img src="${item.url}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">`;
+                grid.appendChild(imgContainer);
+            });
+        }
+
+        function switchPhotoTab(tab) {
+            playSound('click');
+            const tabAll = document.getElementById('tabAllPhotos');
+            const tabDel = document.getElementById('tabDeletedPhotos');
+
+            if (tab === 'all') {
+                tabAll.className = "flex-1 py-2.5 text-pink-400 border-b-2 border-pink-400";
+                tabDel.className = "flex-1 py-2.5 hover:text-white";
+                renderPhotos('all');
+            } else {
+                tabDel.className = "flex-1 py-2.5 text-pink-400 border-b-2 border-pink-400";
+                tabAll.className = "flex-1 py-2.5 hover:text-white";
+                renderPhotos('deleted');
+            }
+        }
+
+        function openPhotoModal(url, note) {
+            playSound('click');
+            document.getElementById('modalImg').src = url;
+            document.getElementById('photoSecretNote').innerText = note;
+            document.getElementById('photoModal').classList.remove('hidden');
+        }
+
+        function closePhotoModal() {
+            playSound('click');
+            document.getElementById('photoModal').classList.add('hidden');
+        }
+
+        function deletePhotoAlert() {
+            playSound('error');
+            showToast("Simulation photo protected");
+        }
+
+        function viewStory(author, imgUrl) {
+            playSound('click');
+            document.getElementById('storyAuthor').innerText = author + "'s Story";
+            document.getElementById('storyImg').src = imgUrl;
+            document.getElementById('storyViewer').classList.remove('hidden');
+        }
+
+        function closeStory() {
+            playSound('click');
+            document.getElementById('storyViewer').classList.add('hidden');
+        }
+
+        function toggleLike(btn) {
+            playSound('click');
+            btn.classList.toggle('text-red-500');
+            btn.classList.toggle('fill-red-500');
+        }
+
+        function changeWallpaper(url) {
+            playSound('click');
+            document.getElementById('phoneScreen').style.backgroundImage = `url('${url}')`;
+            showToast("Wallpaper changed!");
+        }
+
+        function togglePhoneFrame() {
+            playSound('click');
+            const device = document.getElementById('phoneDevice');
+            isFrameView = !isFrameView;
+            if (isFrameView) {
+                device.className = "relative transition-all duration-300 ease-out flex flex-col justify-between w-full max-w-[410px] h-[840px] max-h-[92vh] bg-black rounded-[50px] shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9)] border-[12px] border-slate-800 ring-1 ring-slate-700/50 overflow-hidden";
+            } else {
+                device.className = "relative transition-all duration-300 ease-out flex flex-col justify-between w-full h-full bg-black rounded-none border-0 overflow-hidden";
+            }
+        }
+
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            const text = document.getElementById('soundText');
+            const icon = document.getElementById('soundIcon');
+            if (soundEnabled) {
+                text.innerText = "Sound ON";
+                icon.setAttribute('data-lucide', 'volume-2');
+            } else {
+                text.innerText = "Sound OFF";
+                icon.setAttribute('data-lucide', 'volume-x');
+            }
+            lucide.createIcons();
+        }
+
+        function quickTorch(btn) {
+            playSound('click');
+            btn.classList.toggle('text-yellow-400');
+            btn.classList.toggle('bg-white/30');
+            showToast("Flashlight toggled");
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.innerText = msg;
+            toast.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-4');
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'pointer-events-none', 'translate-y-4');
+            }, 2000);
+        }
+    </script>
+</body>
+</html>
